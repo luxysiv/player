@@ -10,9 +10,8 @@
 .my-player {
   position: relative;
   width: 100%;
-  height: 100%; /* Chiếm toàn bộ chiều cao container */
-  max-width: 100%; /* Không giới hạn chiều ngang */
-  margin: 0 auto;
+  max-width: 980px;
+  margin: 24px auto;
   background: black;
   border-radius: 8px;
   overflow: hidden;
@@ -21,6 +20,9 @@
   user-select: none;
   font-family: 'Inter', 'Roboto', 'Arial', sans-serif;
   color: var(--accent);
+  
+  /* Thêm thuộc tính này để giữ tỷ lệ khung hình */
+  aspect-ratio: 16 / 9;
 }
 
 /* Video */
@@ -29,7 +31,6 @@
   width: 100%;
   height: 100%;
   background: black;
-  object-fit: cover; /* Giữ tỉ lệ video, lấp đầy khung */
 }
 
 /* Center big play overlay */
@@ -204,7 +205,7 @@
   border-radius: 50%;
   background: var(--accent-red);
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-  margin-top: -4px;
+  margin-top: -4px; /* Chỉnh lại vị trí của dấu chấm để căn giữa trên Chrome */
 }
 .volume-range::-moz-range-thumb {
   width: 12px;
@@ -227,8 +228,13 @@
   opacity: 0;
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
-.seek-indicator-left { left: 20%; }
-.seek-indicator-right { right: 20%; }
+
+.seek-indicator-left {
+  left: 20%;
+}
+.seek-indicator-right {
+  right: 20%;
+}
 
 .seek-indicator-container .arrow-container {
   position: static;
@@ -238,11 +244,13 @@
   gap: 6px;
   margin-bottom: 5px;
 }
+
 .seek-indicator-container .arrow-container i {
   font-size: 1.5em;
   color: var(--accent);
   opacity: 0;
 }
+
 .seek-indicator-container .seek-time {
   font-size: 28px;
   font-weight: 500;
@@ -256,21 +264,26 @@
   opacity: 1;
   transform: translateY(-50%) scale(1);
 }
+
 .seek-indicator-container.animate-out {
   animation: fadeOut 0.3s forwards;
 }
+
 @keyframes fadeOut {
   from { opacity: 1; transform: translateY(-50%) scale(1); }
   to { opacity: 0; transform: translateY(-50%) scale(1.3); }
 }
+
 @keyframes arrow-slide {
   0% { transform: translateX(0); opacity: 0; }
   50% { opacity: 1; }
   100% { transform: translateX(20px); opacity: 0; }
 }
+
 .seek-indicator-left .arrow-container i {
   animation-name: arrow-slide-left;
 }
+
 @keyframes arrow-slide-left {
   0% { transform: translateX(0); opacity: 0; }
   50% { opacity: 1; }
@@ -285,6 +298,7 @@
   pointer-events: none;
   animation: ripple-effect 0.5s ease-out;
 }
+
 @keyframes ripple-effect {
   0% { transform: scale(0); opacity: 0.7; }
   100% { transform: scale(1); opacity: 0; }
