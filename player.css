@@ -1,0 +1,44 @@
+body {
+    margin: 0;
+    background: #000;
+    height: 100%;
+}
+
+html {
+    height: 100%;
+}
+
+#player {
+    width: 100% !important;
+    height: 100% !important;
+    aspect-ratio: 16 / 9;
+}
+
+/* Icon skip không có nền */
+.art-skip-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin: 0 10px;
+    transition: transform 0.3s ease;
+}
+
+.art-skip-icon svg {
+    width: 26px;
+    height: 26px;
+    fill: white;
+    pointer-events: none;
+}
+
+/* Animation quay */
+.spin-right { animation: spinRight 0.4s linear; }
+.spin-left { animation: spinLeft 0.4s linear; }
+
+@keyframes spinRight { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes spinLeft { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+
+/* Khi player nhỏ hơn 400px thì chỉ giữ nút Play, Fullscreen và thanh tiến trình */
+.mini-controls .art-control:not(.art-control-play, .art-control-fullscreen, .art-control-progress) {
+    display: none !important;
+}
