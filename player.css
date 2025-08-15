@@ -7,7 +7,7 @@
 }
 
 /* Player box */
-.my-player {
+.m-player {
   position: relative;
   width: 100%;
   height: 100%; /* Giúp player lấp đầy chiều cao của container cha */
@@ -22,7 +22,7 @@
 }
 
 /* Video */
-.my-player video {
+.m-player video {
   display: block;
   width: 100%;
   height: 100%;
@@ -57,7 +57,7 @@
 }
 
 /* Controls container */
-.my-player-controls {
+.m-player-controls {
   position: absolute;
   left: 0;
   right: 0;
@@ -74,7 +74,7 @@
 }
 
 /* Hidden state */
-.my-player.hide-controls .my-player-controls {
+.m-player.hide-controls .m-player-controls {
   opacity: 0;
   transform: translateY(10px);
   pointer-events: none;
