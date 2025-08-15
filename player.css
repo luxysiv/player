@@ -10,8 +10,7 @@
 .my-player {
   position: relative;
   width: 100%;
-  max-width: 980px;
-  margin: 24px auto;
+  height: 100%; /* Giúp player lấp đầy chiều cao của container cha */
   background: black;
   border-radius: 8px;
   overflow: hidden;
@@ -20,9 +19,6 @@
   user-select: none;
   font-family: 'Inter', 'Roboto', 'Arial', sans-serif;
   color: var(--accent);
-  
-  /* Thêm thuộc tính này để giữ tỷ lệ khung hình */
-  aspect-ratio: 16 / 9;
 }
 
 /* Video */

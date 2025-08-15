@@ -1,8 +1,13 @@
-/* MyPlayer v6.1 — Refined player with Font Awesome icons */
+/* MyPlayer v6.2 — Refined player with Font Awesome icons and improved responsiveness */
 class MyPlayer {
   constructor(container, options = {}) {
     this.container = typeof container === 'string' ? document.querySelector(container) : container;
     if (!this.container) throw new Error('Container not found');
+
+    this.options = {
+        aspectRatio: '16:9', // Mặc định tỷ lệ 16:9
+        ...options
+    };
 
     this.video = document.createElement('video');
     this.video.setAttribute('playsinline', '');
@@ -28,7 +33,7 @@ class MyPlayer {
     this._tapCount = { left: 0, right: 0 };
     this._doubleTapMaxDelay = 300;
 
-    if (options.src) this.load(options.src);
+    if (this.options.src) this.load(this.options.src);
 
     this._showControls();
     this._scheduleHideControls();
@@ -40,13 +45,13 @@ class MyPlayer {
 
     this._resizeObserver = new ResizeObserver(entries => {
       for (let entry of entries) {
-        this._updateResponsiveLayout(entry.contentRect.width);
+        this._handleResize(entry.contentRect);
       }
     });
     this._resizeObserver.observe(this.container);
   }
 
-  // ---------- LOGIC CHẶN QUẢNG CÁO ----------
+  // ---------- LOGIC CHẶN QUẢNG CÁO (không thay đổi) ----------
   _adsRegexList = [
     /(?<!#EXT-X-DISCONTINUITY[\s\S]*)#EXT-X-DISCONTINUITY\n(?:.*?\n){18,24}#EXT-X-DISCONTINUITY\n(?![\s\S]*#EXT-X-DISCONTINUITY)/g,
     /#EXT-X-DISCONTINUITY\n(?:#EXT-X-KEY:METHOD=NONE\n(?:.*\n){18,24})?#EXT-X-DISCONTINUITY\n|convertv7\//g,
@@ -76,7 +81,7 @@ class MyPlayer {
     }
   }
 
-  // ---------- PUBLIC API ----------
+  // ---------- PUBLIC API (không thay đổi) ----------
   play() { return this.video.play(); }
   pause() { return this.video.pause(); }
   seek(seconds) { this.video.currentTime = Math.max(0, Math.min(this.video.duration || 0, seconds)); }
@@ -138,7 +143,7 @@ class MyPlayer {
     }
   }
 
-  // ---------- UI Methods ----------
+  // ---------- UI Methods (các phương thức nhỏ không thay đổi) ----------
   _buildUI() {
     const center = document.createElement('div');
     center.className = 'center-play';
@@ -349,6 +354,10 @@ class MyPlayer {
     this._hideControlsTimeout = setTimeout(() => {
       if (!this.video.paused) this._hideControls();
     }, this._inactiveDelay);
+  }
+
+  _handleResize(rect) {
+    this._updateResponsiveLayout(rect.width);
   }
 
   _updateResponsiveLayout(width) {
