@@ -1,29 +1,17 @@
-/* MyPlayer v6.2 — Refined player with Font Awesome icons and improved responsiveness */
 class MyPlayer {
   constructor(container, options = {}) {
     this.container = typeof container === 'string' ? document.querySelector(container) : container;
     if (!this.container) throw new Error('Container not found');
-
     this.options = {
-        aspectRatio: '16:9', // Mặc định tỷ lệ 16:9
-        ...options
+      aspectRatio: '16:9',
+      ...options
     };
-
     this.video = document.createElement('video');
     this.video.setAttribute('playsinline', '');
     this.video.setAttribute('preload', 'auto');
     this.video.style.width = '100%';
     this.video.style.height = '100%';
     this.video.controls = false;
-
-    this.container.classList.add('my-player');
-    this.container.appendChild(this.video);
-
-    this._buildUI();
-    this._bindUIEvents();
-    this._bindKeyboard();
-    this._bindFullscreenEvents();
-
     this.hls = null;
     this._hideControlsTimeout = null;
     this._inactiveDelay = 2500;
@@ -32,9 +20,15 @@ class MyPlayer {
     this._tapTimeout = null;
     this._tapCount = { left: 0, right: 0 };
     this._doubleTapMaxDelay = 300;
-
+    this.playbackSpeeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
+    this.currentSpeed = 1;
+    this.container.classList.add('my-player');
+    this.container.appendChild(this.video);
+    this._buildUI();
+    this._bindUIEvents();
+    this._bindKeyboard();
+    this._bindFullscreenEvents();
     if (this.options.src) this.load(this.options.src);
-
     this._showControls();
     this._scheduleHideControls();
     this._updateProgress();
@@ -42,7 +36,6 @@ class MyPlayer {
     this._updateVolumeIcon();
     this._updateVolumeBar();
     this._updateFullscreenIcon();
-
     this._resizeObserver = new ResizeObserver(entries => {
       for (let entry of entries) {
         this._handleResize(entry.contentRect);
@@ -50,28 +43,22 @@ class MyPlayer {
     });
     this._resizeObserver.observe(this.container);
   }
-
-  // ---------- LOGIC CHẶN QUẢNG CÁO (không thay đổi) ----------
   _adsRegexList = [
     /(?<!#EXT-X-DISCONTINUITY[\s\S]*)#EXT-X-DISCONTINUITY\n(?:.*?\n){18,24}#EXT-X-DISCONTINUITY\n(?![\s\S]*#EXT-X-DISCONTINUITY)/g,
     /#EXT-X-DISCONTINUITY\n(?:#EXT-X-KEY:METHOD=NONE\n(?:.*\n){18,24})?#EXT-X-DISCONTINUITY\n|convertv7\//g,
     /#EXT-X-DISCONTINUITY\n#EXTINF:3\.920000,\n.*\n#EXTINF:0\.760000,\n.*\n#EXTINF:2\.000000,\n.*\n#EXTINF:2\.500000,\n.*\n#EXTINF:2\.000000,\n.*\n#EXTINF:2\.420000,\n.*\n#EXTINF:2\.000000,\n.*\n#EXTINF:0\.780000,\n.*\n#EXTINF:1\.960000,\n.*\n#EXTINF:2\.000000,\n.*\n#EXTINF:1\.760000,\n.*\n#EXTINF:3\.200000,\n.*\n#EXTINF:2\.000000,\n.*\n#EXTINF:1\.360000,\n.*\n#EXTINF:2\.000000,\n.*\n#EXTINF:2\.000000,\n.*\n#EXTINF:0\.720000,\n.*/g
   ];
-
   async _removeAds(url) {
     try {
       const req = await fetch(url);
       let playlist = (await req.text()).replace(/^[^#].*$/gm, l => {
         try { return new URL(l, url).href; } catch { return l; }
       });
-
       if (playlist.includes("#EXT-X-STREAM-INF"))
         return this._removeAds(playlist.trim().split("\n").pop());
-
       if (this._adsRegexList.some(r => (r.lastIndex = 0, r.test(playlist)))) {
         playlist = this._adsRegexList.reduce((p, r) => p.replaceAll(r, ""), playlist);
       }
-
       return URL.createObjectURL(new Blob([playlist], {
         type: req.headers.get("Content-Type") || "text/plain"
       }));
@@ -80,8 +67,6 @@ class MyPlayer {
       throw e;
     }
   }
-
-  // ---------- PUBLIC API (không thay đổi) ----------
   play() { return this.video.play(); }
   pause() { return this.video.pause(); }
   seek(seconds) { this.video.currentTime = Math.max(0, Math.min(this.video.duration || 0, seconds)); }
@@ -106,10 +91,26 @@ class MyPlayer {
     this._updateVolumeBar();
     this.volumeRange.value = this.video.volume;
   }
+  setPlaybackRate(rate) {
+    try {
+      this.currentSpeed = rate;
+      this.video.playbackRate = rate;
+      console.log('Playback rate set to:', this.video.playbackRate);
+      this.speedBtnText.textContent = rate === 1 ? '1x' : `${rate}x`;
+      this.speedMenu.querySelectorAll('button').forEach(btn => {
+        if (parseFloat(btn.dataset.speed) === rate) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    } catch (error) {
+      console.error('Error setting playback rate:', error);
+    }
+  }
   async load(src) {
     if (this.hls) { try { this.hls.destroy(); } catch (e) {} this.hls = null; }
     if (!src) return;
-
     if (src.includes('.m3u8')) {
       try {
         const cleanUrl = await this._removeAds(src);
@@ -142,15 +143,12 @@ class MyPlayer {
       document.exitFullscreen();
     }
   }
-
-  // ---------- UI Methods (các phương thức nhỏ không thay đổi) ----------
   _buildUI() {
     const center = document.createElement('div');
     center.className = 'center-play';
     center.innerHTML = `<button class="center-play-btn" aria-label="Play/Pause"><i class="fas fa-play"></i></button>`;
     this.container.appendChild(center);
     this.centerPlayBtn = center.querySelector('.center-play-btn');
-
     const controls = document.createElement('div');
     controls.className = 'my-player-controls';
     controls.innerHTML = `
@@ -165,6 +163,10 @@ class MyPlayer {
           <div class="time">00:00 / 00:00</div>
         </div>
         <div class="controls-right">
+          <div class="speed-menu-container">
+            <button class="btn btn-speed" aria-label="Playback speed">1x</button>
+            <div class="speed-menu"></div>
+          </div>
           <button class="btn btn-volume" aria-label="Toggle mute"><i class="fas fa-volume-high"></i></button>
           <input class="volume-range" type="range" min="0" max="1" step="0.01" value="1" />
           <button class="btn btn-full" aria-label="Fullscreen"><i class="fas fa-expand"></i></button>
@@ -176,33 +178,50 @@ class MyPlayer {
     this.progress = controls.querySelector('.progress');
     this.playBtn = controls.querySelector('.btn-play');
     this.timeText = controls.querySelector('.time');
+    this.speedBtn = controls.querySelector('.btn-speed');
+    this.speedBtnText = this.speedBtn;
+    this.speedMenu = controls.querySelector('.speed-menu');
     this.volumeBtn = controls.querySelector('.btn-volume');
     this.volumeRange = controls.querySelector('.volume-range');
     this.fullBtn = controls.querySelector('.btn-full');
+    this._buildSpeedMenu();
   }
-
+  _buildSpeedMenu() {
+    this.speedMenu.innerHTML = '';
+    this.playbackSpeeds.forEach(speed => {
+      const button = document.createElement('button');
+      button.textContent = speed === 1 ? 'Normal' : `${speed}x`;
+      button.dataset.speed = speed;
+      if (speed === this.currentSpeed) {
+        button.classList.add('active');
+      }
+      this.speedMenu.appendChild(button);
+      console.log('Speed button created:', { text: button.textContent, speed: button.dataset.speed });
+    });
+  }
+  _toggleSpeedMenu() {
+    this.speedMenu.classList.toggle('show');
+    this.speedBtn.classList.toggle('active');
+  }
   _togglePlayPause() {
     if (this.video.paused) {
-      this.play().catch(e => console.error("Error playing video:", e));
+      this.play();
     } else {
       this.pause();
     }
   }
-
   _bindUIEvents() {
     this.centerPlayBtn.addEventListener('click', () => this._togglePlayPause());
     this.centerPlayBtn.addEventListener('touchend', (e) => {
       e.preventDefault();
       this._togglePlayPause();
     });
-
     this.playBtn.addEventListener('click', () => this._togglePlayPause());
     this.video.addEventListener('click', (e) => {
       if (e.target === this.video) {
         this._togglePlayPause();
       }
     });
-
     this.progress.addEventListener('input', () => {
       const pct = parseFloat(this.progress.value) / 100;
       const t = (this.video.duration || 0) * pct;
@@ -214,7 +233,6 @@ class MyPlayer {
       const t = (this.video.duration || 0) * pct;
       this.video.currentTime = t;
     });
-
     this.video.addEventListener('play', () => {
       this._updatePlayUI();
       this._scheduleHideControls();
@@ -231,14 +249,12 @@ class MyPlayer {
       this._updateVolumeIcon();
       this._updateVolumeBar();
     });
-
     this.volumeRange.addEventListener('input', (e) => {
       this.setVolume(parseFloat(e.target.value));
     });
     this.volumeBtn.addEventListener('click', () => {
       this.toggleMute();
     });
-
     this.fullBtn.addEventListener('click', () => {
       if (!document.fullscreenElement) {
         this.enterFullscreen();
@@ -246,46 +262,59 @@ class MyPlayer {
         this.exitFullscreen();
       }
     });
-
     ['mousemove', 'touchstart', 'touchmove'].forEach(ev => {
       this.container.addEventListener(ev, () => {
         this._showControls();
         this._scheduleHideControls();
       }, { passive: true });
     });
-
     if ('ontouchstart' in window) {
       this.container.addEventListener('touchend', (ev) => this._onTap(ev), { passive: false });
     } else {
       this.container.addEventListener('dblclick', (ev) => this._onDoubleClick(ev));
     }
+    this.speedBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._toggleSpeedMenu();
+      console.log('Speed button clicked, menu state:', this.speedMenu.classList.contains('show'));
+    });
+    this.speedMenu.addEventListener('click', (e) => {
+      const button = e.target.closest('button');
+      if (button && button.dataset.speed) {
+        const speed = parseFloat(button.dataset.speed);
+        this.setPlaybackRate(speed);
+        this._toggleSpeedMenu();
+        console.log('Selected speed:', speed);
+      }
+    });
+    document.addEventListener('click', (e) => {
+      if (!this.speedBtn.contains(e.target) && !this.speedMenu.contains(e.target)) {
+        this.speedMenu.classList.remove('show');
+        this.speedBtn.classList.remove('active');
+        console.log('Closed speed menu');
+      }
+    }, { capture: false });
   }
-
   _bindFullscreenEvents() {
     document.addEventListener('fullscreenchange', () => {
       this._updateFullscreenIcon();
     });
   }
-
   _updatePlayUI() {
     const isPaused = this.video.paused || this.video.ended;
     const playIcon = isPaused ? 'fa-play' : 'fa-pause';
-    
     const playIconElement = this.playBtn.querySelector('i');
     if (playIconElement) {
       playIconElement.className = `fas ${playIcon}`;
     }
-    
     const centerIconElement = this.centerPlayBtn.querySelector('i');
     if (centerIconElement) {
       centerIconElement.className = `fas ${playIcon}`;
     }
   }
-
   _updateVolumeIcon() {
     const volumeIcon = this.volumeBtn.querySelector('i');
     if (!volumeIcon) return;
-    
     if (this.video.muted || this.video.volume === 0) {
       volumeIcon.className = 'fas fa-volume-mute';
     } else if (this.video.volume < 0.5) {
@@ -294,25 +323,20 @@ class MyPlayer {
       volumeIcon.className = 'fas fa-volume-high';
     }
   }
-
   _updateVolumeBar() {
     const pct = this.video.volume * 100;
     this.volumeRange.style.background = `linear-gradient(to right, var(--accent-red) 0%, var(--accent-red) ${pct}%, rgba(255,255,255,0.2) ${pct}%, rgba(255,255,255,0.2) 100%)`;
   }
-
   _updateFullscreenIcon() {
     const fullscreenIcon = this.fullBtn.querySelector('i');
     if (!fullscreenIcon) return;
-    
     fullscreenIcon.className = document.fullscreenElement 
       ? 'fas fa-compress' 
       : 'fas fa-expand';
   }
-
   _updateProgressBar(pct) {
     this.progress.style.background = `linear-gradient(to right, var(--accent-red) 0%, var(--accent-red) ${pct}%, rgba(255,255,255,0.2) ${pct}%, rgba(255,255,255,0.2) 100%)`;
   }
-
   _updateProgress() {
     if (!this.video.duration || isNaN(this.video.duration)) return;
     const pct = (this.video.currentTime / this.video.duration) * 100;
@@ -320,7 +344,6 @@ class MyPlayer {
     this._updateProgressBar(pct);
     this._setTimeText(this.video.currentTime, this.video.duration);
   }
-
   _setTimeText(current, total) {
     const fmt = t => {
       if (!t || isNaN(t) || !isFinite(t)) return '00:00';
@@ -332,7 +355,6 @@ class MyPlayer {
     };
     this.timeText.textContent = `${fmt(current)} / ${fmt(total)}`;
   }
-
   _showControls() {
     this.container.classList.remove('hide-controls');
     this.controls.style.pointerEvents = '';
@@ -340,7 +362,6 @@ class MyPlayer {
     this.centerPlayBtn.style.transform = 'scale(1)';
     this.centerPlayBtn.style.pointerEvents = 'auto';
   }
-
   _hideControls() {
     this.container.classList.add('hide-controls');
     this.controls.style.pointerEvents = 'none';
@@ -348,18 +369,15 @@ class MyPlayer {
     this.centerPlayBtn.style.transform = 'scale(.96)';
     this.centerPlayBtn.style.pointerEvents = 'none';
   }
-
   _scheduleHideControls() {
     if (this._hideControlsTimeout) clearTimeout(this._hideControlsTimeout);
     this._hideControlsTimeout = setTimeout(() => {
       if (!this.video.paused) this._hideControls();
     }, this._inactiveDelay);
   }
-
   _handleResize(rect) {
     this._updateResponsiveLayout(rect.width);
   }
-
   _updateResponsiveLayout(width) {
     if (width < 520) {
       this.volumeRange.style.display = 'none';
@@ -367,7 +385,6 @@ class MyPlayer {
       this.volumeRange.style.display = '';
     }
   }
-
   _bindKeyboard() {
     window.addEventListener('keydown', (e) => {
       if (!document.activeElement || document.activeElement === document.body) {
@@ -382,9 +399,10 @@ class MyPlayer {
       }
     });
   }
-
   _onTap(ev) {
-    if (ev.target.closest('.btn') || ev.target.closest('input')) return;
+    if (ev.target.closest('.btn-speed') || ev.target.closest('.speed-menu')) {
+      return;
+    }
     ev.preventDefault();
     const rect = this.container.getBoundingClientRect();
     const clientX = ev.changedTouches[0].clientX;
@@ -392,11 +410,9 @@ class MyPlayer {
     const width = rect.width;
     const isLeftRegion = x < width / 3;
     const isRightRegion = x > (2 * width) / 3;
-
     if (this._tapTimeout) {
       clearTimeout(this._tapTimeout);
       this._tapTimeout = null;
-
       if (isLeftRegion) {
         this._tapCount.left++;
         this._tapCount.right = 0;
@@ -423,7 +439,6 @@ class MyPlayer {
       }, this._doubleTapMaxDelay);
     }
   }
-
   _onDoubleClick(ev) {
     const rect = this.container.getBoundingClientRect();
     const x = ev.clientX - rect.left;
@@ -439,7 +454,6 @@ class MyPlayer {
     }
     this._scheduleHideControls();
   }
-
   _createRipple(ev) {
     this.container.querySelectorAll('.ripple').forEach(el => el.remove());
     const ripple = document.createElement('div');
@@ -457,12 +471,10 @@ class MyPlayer {
     this.container.appendChild(ripple);
     setTimeout(() => ripple.remove(), 500);
   }
-
   _showSeekIndicator(time, isForward) {
     this.container.querySelectorAll('.seek-indicator-container').forEach(el => el.remove());
     const container = document.createElement('div');
     container.className = `seek-indicator-container ${isForward ? 'seek-indicator-right' : 'seek-indicator-left'}`;
-
     const arrowContainer = document.createElement('div');
     arrowContainer.className = 'arrow-container';
     for (let i = 0; i < 3; i++) {
@@ -471,27 +483,22 @@ class MyPlayer {
       arrow.style.animation = `arrow-slide 0.5s ease-in-out ${i * 0.08}s forwards`;
       arrowContainer.appendChild(arrow);
     }
-
     const timeText = document.createElement('span');
     timeText.className = 'seek-time';
     timeText.textContent = isForward ? `+${time}s` : `−${time}s`;
-
     container.appendChild(arrowContainer);
     container.appendChild(timeText);
     this.container.appendChild(container);
     container.classList.add('show');
-
     setTimeout(() => {
       container.classList.add('animate-out');
       setTimeout(() => container.remove(), 300);
     }, 700);
   }
-
   destroy() {
     if (this.hls) try { this.hls.destroy(); } catch (e) {}
     if (this._resizeObserver) this._resizeObserver.disconnect();
     this.container.innerHTML = '';
   }
 }
-
 window.MyPlayer = MyPlayer;
