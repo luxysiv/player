@@ -5,10 +5,12 @@
   --muted-accent: rgba(255,255,255,0.7);
   --bg-gradient: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
 }
+
+/* Player box */
 .my-player {
   position: relative;
   width: 100%;
-  height: 100%;
+  height: 100%; /* Giúp player lấp đầy chiều cao của container cha */
   background: black;
   border-radius: 8px;
   overflow: hidden;
@@ -18,12 +20,16 @@
   font-family: 'Inter', 'Roboto', 'Arial', sans-serif;
   color: var(--accent);
 }
+
+/* Video */
 .my-player video {
   display: block;
   width: 100%;
   height: 100%;
   background: black;
 }
+
+/* Center big play overlay */
 .center-play {
   position: absolute;
   inset: 0;
@@ -47,8 +53,10 @@
 .center-play i {
   font-size: 2em;
   color: var(--accent);
-  margin-left: 4px;
+  margin-left: 4px; /* Adjust play icon position */
 }
+
+/* Controls container */
 .my-player-controls {
   position: absolute;
   left: 0;
@@ -64,11 +72,15 @@
   transition: opacity 0.3s ease, transform 0.3s ease;
   opacity: 1;
 }
+
+/* Hidden state */
 .my-player.hide-controls .my-player-controls {
   opacity: 0;
   transform: translateY(10px);
   pointer-events: none;
 }
+
+/* Progress bar */
 .progress-row {
   width: 100%;
   display: flex;
@@ -117,6 +129,8 @@
   border: none;
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
+
+/* Buttons row */
 .controls-row {
   display: flex;
   align-items: center;
@@ -152,6 +166,8 @@
   font-size: 1.25em;
   color: var(--accent);
 }
+
+/* Time text */
 .time {
   color: var(--muted-accent);
   font-size: 12px;
@@ -159,6 +175,8 @@
   text-align: left;
   font-weight: 400;
 }
+
+/* Volume slider */
 .volume-range {
   width: 100px;
   -webkit-appearance: none;
@@ -183,7 +201,7 @@
   border-radius: 50%;
   background: var(--accent-red);
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-  margin-top: -4px;
+  margin-top: -4px; /* Chỉnh lại vị trí của dấu chấm để căn giữa trên Chrome */
 }
 .volume-range::-moz-range-thumb {
   width: 12px;
@@ -193,67 +211,8 @@
   border: none;
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
-.speed-menu-container {
-  position: relative;
-}
-.btn-speed {
-  font-size: 14px;
-  font-weight: 500;
-  padding: 0 8px;
-  width: auto;
-  min-width: 36px;
-  color: var(--muted-accent);
-  transition: color 0.2s ease;
-}
-.btn-speed:hover {
-  color: var(--accent);
-  background: rgba(255,255,255,0.1);
-}
-.speed-menu {
-  position: absolute;
-  bottom: calc(100% + 4px);
-  left: 50%;
-  transform: translateX(-50%) translateY(-10px);
-  background: rgba(20,20,20,0.9);
-  backdrop-filter: blur(8px);
-  border-radius: 8px;
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  white-space: nowrap;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
-  z-index: 100;
-  min-width: 80px;
-}
-.speed-menu.show {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(-12px);
-}
-.speed-menu button {
-  background: transparent;
-  border: none;
-  color: var(--muted-accent);
-  font-family: inherit;
-  font-size: 14px;
-  padding: 8px 12px;
-  text-align: center;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background 0.2s ease, color 0.2s ease;
-  width: 100%;
-}
-.speed-menu button:hover {
-  background: rgba(255,255,255,0.1);
-  color: var(--accent);
-}
-.speed-menu button.active {
-  color: var(--accent-red);
-  font-weight: 500;
-}
+
+/* Seek Indicator */
 .seek-indicator-container {
   position: absolute;
   top: 50%;
@@ -265,12 +224,14 @@
   opacity: 0;
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
+
 .seek-indicator-left {
   left: 20%;
 }
 .seek-indicator-right {
   right: 20%;
 }
+
 .seek-indicator-container .arrow-container {
   position: static;
   transform: none;
@@ -279,11 +240,13 @@
   gap: 6px;
   margin-bottom: 5px;
 }
+
 .seek-indicator-container .arrow-container i {
   font-size: 1.5em;
   color: var(--accent);
   opacity: 0;
 }
+
 .seek-indicator-container .seek-time {
   font-size: 28px;
   font-weight: 500;
@@ -291,30 +254,39 @@
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
   letter-spacing: 0.5px;
 }
+
+/* Hiển thị và ẩn indicator */
 .seek-indicator-container.show {
   opacity: 1;
   transform: translateY(-50%) scale(1);
 }
+
 .seek-indicator-container.animate-out {
   animation: fadeOut 0.3s forwards;
 }
+
 @keyframes fadeOut {
   from { opacity: 1; transform: translateY(-50%) scale(1); }
   to { opacity: 0; transform: translateY(-50%) scale(1.3); }
 }
+
 @keyframes arrow-slide {
   0% { transform: translateX(0); opacity: 0; }
   50% { opacity: 1; }
   100% { transform: translateX(20px); opacity: 0; }
 }
+
 .seek-indicator-left .arrow-container i {
   animation-name: arrow-slide-left;
 }
+
 @keyframes arrow-slide-left {
   0% { transform: translateX(0); opacity: 0; }
   50% { opacity: 1; }
   100% { transform: translateX(-20px); opacity: 0; }
 }
+
+/* Ripple effect */
 .ripple {
   position: absolute;
   border-radius: 50%;
@@ -322,10 +294,13 @@
   pointer-events: none;
   animation: ripple-effect 0.5s ease-out;
 }
+
 @keyframes ripple-effect {
   0% { transform: scale(0); opacity: 0.7; }
   100% { transform: scale(1); opacity: 0; }
 }
+
+/* Responsive small screens */
 @media (max-width: 520px) {
   .volume-range { display: none; }
   .time { min-width: 60px; font-size: 11px; }
