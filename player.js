@@ -15,7 +15,7 @@ class ClickManager {
 
     _handleEvent(event) {
         let target = event.target;
-        console.log('Click target:', target); // Debug
+        console.log('Click target:', target, 'Class:', target.className, 'Tag:', target.tagName); // Debug chi tiết
         while (target && target !== this.container) {
             for (const [selector, handler] of this.handlers.entries()) {
                 if (target.matches(selector)) {
@@ -26,7 +26,7 @@ class ClickManager {
             }
             target = target.parentElement;
         }
-        console.log('No handler found for click'); // Debug
+        console.log('No handler found for click on:', event.target, 'at position:', event.clientX, event.clientY); // Debug
     }
 
     destroy() {
@@ -72,6 +72,7 @@ class MPlayer {
         this._tapTimeout = null;
         this._tapCount = { left: 0, right: 0 };
         this._doubleTapMaxDelay = 300;
+        this.currentSpeed = 1;
 
         if (this.options.src) this.load(this.options.src);
 
@@ -202,6 +203,17 @@ class MPlayer {
                     <div class="time">00:00 / 00:00</div>
                 </div>
                 <div class="controls-right">
+                    <div class="speed-menu">
+                        <button class="btn btn-speed" aria-label="Playback speed">1x</button>
+                        <div class="speed-options">
+                            <div class="speed-option" data-speed="0.5">0.5x</div>
+                            <div class="speed-option" data-speed="0.75">0.75x</div>
+                            <div class="speed-option active" data-speed="1">1x</div>
+                            <div class="speed-option" data-speed="1.25">1.25x</div>
+                            <div class="speed-option" data-speed="1.5">1.5x</div>
+                            <div class="speed-option" data-speed="2">2x</div>
+                        </div>
+                    </div>
                     <button class="btn btn-volume" aria-label="Toggle mute"><i class="fas fa-volume-high"></i></button>
                     <input class="volume-range" type="range" min="0" max="1" step="0.01" value="1" />
                     <button class="btn btn-full" aria-label="Fullscreen"><i class="fas fa-expand"></i></button>
@@ -213,6 +225,9 @@ class MPlayer {
         this.progress = controls.querySelector('.progress');
         this.playBtn = controls.querySelector('.btn-play');
         this.timeText = controls.querySelector('.time');
+        this.speedBtn = controls.querySelector('.btn-speed');
+        this.speedMenu = controls.querySelector('.speed-options');
+        this.speedOptions = controls.querySelectorAll('.speed-option');
         this.volumeBtn = controls.querySelector('.btn-volume');
         this.volumeRange = controls.querySelector('.volume-range');
         this.fullBtn = controls.querySelector('.btn-full');
@@ -235,6 +250,42 @@ class MPlayer {
         this.clickManager.add('.btn-play', (event) => {
             event.stopPropagation();
             this._togglePlayPause();
+        });
+
+        this.clickManager.add('.btn-speed', (event) => {
+            event.stopPropagation();
+            console.log('Speed button clicked, toggling menu'); // Debug
+            this._toggleSpeedMenu();
+        });
+
+        this.clickManager.add('.speed-option', (event, target) => {
+            event.stopPropagation();
+            const speed = target.dataset.speed;
+            console.log('Speed option clicked:', speed); // Debug
+            if (speed && !isNaN(parseFloat(speed))) {
+                this._setPlaybackSpeed(speed);
+            } else {
+                console.warn('Invalid or missing data-speed attribute on element:', target);
+            }
+        });
+
+        // Dự phòng: Thêm sự kiện trực tiếp cho .speed-option
+        this.speedOptions.forEach(option => {
+            option.addEventListener('click', (event) => {
+                event.stopPropagation();
+                const speed = option.dataset.speed;
+                console.log('Direct speed option click:', speed); // Debug
+                if (speed && !isNaN(parseFloat(speed))) {
+                    this._setPlaybackSpeed(speed);
+                }
+            });
+        });
+
+        this.clickManager.add('.m-player', (event) => {
+            if (!event.target.closest('.speed-menu') && !event.target.closest('.speed-option')) {
+                console.log('Hiding speed menu due to click outside'); // Debug
+                this._hideSpeedMenu();
+            }
         });
 
         this.clickManager.add('.btn-volume', (event) => {
@@ -313,6 +364,45 @@ class MPlayer {
         });
     }
 
+    _setPlaybackSpeed(speed) {
+        const parsedSpeed = parseFloat(speed);
+        if (isNaN(parsedSpeed) || parsedSpeed <= 0) {
+            console.error('Invalid playback speed:', speed);
+            return;
+        }
+        this.currentSpeed = parsedSpeed;
+        this.video.playbackRate = this.currentSpeed;
+        this.speedBtn.textContent = `${this.currentSpeed}x`;
+        console.log('Playback speed set to:', this.currentSpeed, 'Actual video playbackRate:', this.video.playbackRate); // Debug
+
+        // Update active state in menu
+        this.speedOptions.forEach(option => {
+            if (parseFloat(option.dataset.speed) === this.currentSpeed) {
+                option.classList.add('active');
+            } else {
+                option.classList.remove('active');
+            }
+        });
+
+        this._hideSpeedMenu();
+    }
+
+    _toggleSpeedMenu() {
+        this.speedMenu.classList.toggle('show');
+        console.log('Speed menu toggled, show:', this.speedMenu.classList.contains('show')); // Debug
+        // Đảm bảo controls không bị ẩn khi menu tốc độ mở
+        if (this.speedMenu.classList.contains('show')) {
+            this._showControls();
+        }
+    }
+
+    _hideSpeedMenu() {
+        setTimeout(() => {
+            this.speedMenu.classList.remove('show');
+            console.log('Speed menu hidden'); // Debug
+        }, 300); // Tăng độ trễ để đảm bảo click được xử lý
+    }
+
     _updatePlayUI() {
         const isPaused = this.video.paused || this.video.ended;
         const playIcon = isPaused ? 'fa-play' : 'fa-pause';
@@ -381,10 +471,14 @@ class MPlayer {
 
     _showControls() {
         this.container.classList.remove('hide-controls');
-        this.controls.style.pointerEvents = 'auto'; // Đảm bảo controls nhận sự kiện
+        this.controls.style.pointerEvents = 'auto';
         this.centerPlayBtn.style.opacity = '1';
         this.centerPlayBtn.style.transform = 'scale(1)';
-        this.centerPlayBtn.style.pointerEvents = 'auto'; // Đảm bảo nút nhận sự kiện
+        this.centerPlayBtn.style.pointerEvents = 'auto';
+        // Đảm bảo speed-options có thể click
+        if (this.speedMenu.classList.contains('show')) {
+            this.speedMenu.style.pointerEvents = 'auto';
+        }
     }
 
     _hideControls() {
@@ -398,7 +492,9 @@ class MPlayer {
     _scheduleHideControls() {
         if (this._hideControlsTimeout) clearTimeout(this._hideControlsTimeout);
         this._hideControlsTimeout = setTimeout(() => {
-            if (!this.video.paused) this._hideControls();
+            if (!this.video.paused && !this.speedMenu.classList.contains('show')) {
+                this._hideControls();
+            }
         }, this._inactiveDelay);
     }
 
@@ -409,8 +505,10 @@ class MPlayer {
     _updateResponsiveLayout(width) {
         if (width < 520) {
             this.volumeRange.style.display = 'none';
+            this.speedBtn.style.display = 'none';
         } else {
             this.volumeRange.style.display = '';
+            this.speedBtn.style.display = '';
         }
     }
 
@@ -425,12 +523,16 @@ class MPlayer {
                     else this.exitFullscreen();
                 }
                 if (e.code === 'KeyM') this.toggleMute();
+                if (e.code === 'KeyS') this._toggleSpeedMenu();
+                if (e.code === 'Digit1') { e.preventDefault(); this._setPlaybackSpeed(1); }
+                if (e.code === 'Digit2') { e.preventDefault(); this._setPlaybackSpeed(2); }
+                if (e.code === 'Digit3') { e.preventDefault(); this._setPlaybackSpeed(0.5); }
             }
         });
     }
 
     _onTap(ev) {
-        if (ev.target.closest('.btn, .center-play-btn') || ev.target.closest('input')) return;
+        if (ev.target.closest('.btn, .center-play-btn, .speed-menu, .speed-option') || ev.target.closest('input')) return;
         ev.preventDefault();
         const rect = this.container.getBoundingClientRect();
         const clientX = ev.changedTouches[0].clientX;
