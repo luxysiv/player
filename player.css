@@ -168,6 +168,22 @@
   font-weight: 400;
 }
 
+.speed-display {
+  color: var(--muted-accent);
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: 10px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  display: none; /* Mặc định ẩn trên mọi kích thước */
+}
+
+.speed-display.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .volume-range {
   width: 100px;
   -webkit-appearance: none;

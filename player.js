@@ -15,18 +15,15 @@ class ClickManager {
 
     _handleEvent(event) {
         let target = event.target;
-        console.log('Click target:', target, 'Class:', target.className, 'Tag:', target.tagName); // Debug chi tiết
         while (target && target !== this.container) {
             for (const [selector, handler] of this.handlers.entries()) {
                 if (target.matches(selector)) {
-                    console.log('Handler triggered for selector:', selector); // Debug
                     handler.call(this.container, event, target);
                     return;
                 }
             }
             target = target.parentElement;
         }
-        console.log('No handler found for click on:', event.target, 'at position:', event.clientX, event.clientY); // Debug
     }
 
     destroy() {
@@ -73,6 +70,13 @@ class MPlayer {
         this._tapCount = { left: 0, right: 0 };
         this._doubleTapMaxDelay = 300;
         this.currentSpeed = 1;
+        this._speedDisplayTimeout = null;
+        this._isSpeedBtnHidden = false;
+
+        this._swipeStartX = 0;
+        this._swipeStartY = 0;
+        this._swipeThreshold = 50;
+        this._swipeSpeedChange = false;
 
         if (this.options.src) this.load(this.options.src);
 
@@ -116,7 +120,6 @@ class MPlayer {
                 type: req.headers.get("Content-Type") || "text/plain"
             }));
         } catch (e) {
-            console.error("Lỗi khi xử lý M3U8:", e);
             throw e;
         }
     }
@@ -156,16 +159,10 @@ class MPlayer {
                     this.hls = new Hls();
                     this.hls.loadSource(cleanUrl);
                     this.hls.attachMedia(this.video);
-                    this.hls.on(Hls.Events.ERROR, (event, data) => {
-                        console.error('Hls.js Error:', data);
-                    });
                 } else if (this.video.canPlayType('application/vnd.apple.mpegurl')) {
                     this.video.src = cleanUrl;
-                } else {
-                    console.error('HLS not supported in this browser');
                 }
             } catch (e) {
-                console.error("Failed to load M3U8 after ad removal:", e);
             }
         } else {
             this.video.src = src;
@@ -201,6 +198,7 @@ class MPlayer {
                 <div class="controls-left">
                     <button class="btn btn-play" aria-label="Play/Pause"><i class="fas fa-play"></i></button>
                     <div class="time">00:00 / 00:00</div>
+                    <span class="speed-display">1x</span>
                 </div>
                 <div class="controls-right">
                     <div class="speed-menu">
@@ -225,6 +223,7 @@ class MPlayer {
         this.progress = controls.querySelector('.progress');
         this.playBtn = controls.querySelector('.btn-play');
         this.timeText = controls.querySelector('.time');
+        this.speedDisplay = controls.querySelector('.speed-display');
         this.speedBtn = controls.querySelector('.btn-speed');
         this.speedMenu = controls.querySelector('.speed-options');
         this.speedOptions = controls.querySelectorAll('.speed-option');
@@ -235,7 +234,7 @@ class MPlayer {
 
     _togglePlayPause() {
         if (this.video.paused) {
-            this.play().catch(e => console.error("Error playing video:", e));
+            this.play().catch(e => {});
         } else {
             this.pause();
         }
@@ -254,27 +253,21 @@ class MPlayer {
 
         this.clickManager.add('.btn-speed', (event) => {
             event.stopPropagation();
-            console.log('Speed button clicked, toggling menu'); // Debug
             this._toggleSpeedMenu();
         });
 
         this.clickManager.add('.speed-option', (event, target) => {
             event.stopPropagation();
             const speed = target.dataset.speed;
-            console.log('Speed option clicked:', speed); // Debug
             if (speed && !isNaN(parseFloat(speed))) {
                 this._setPlaybackSpeed(speed);
-            } else {
-                console.warn('Invalid or missing data-speed attribute on element:', target);
             }
         });
 
-        // Dự phòng: Thêm sự kiện trực tiếp cho .speed-option
         this.speedOptions.forEach(option => {
             option.addEventListener('click', (event) => {
                 event.stopPropagation();
                 const speed = option.dataset.speed;
-                console.log('Direct speed option click:', speed); // Debug
                 if (speed && !isNaN(parseFloat(speed))) {
                     this._setPlaybackSpeed(speed);
                 }
@@ -283,7 +276,6 @@ class MPlayer {
 
         this.clickManager.add('.m-player', (event) => {
             if (!event.target.closest('.speed-menu') && !event.target.closest('.speed-option')) {
-                console.log('Hiding speed menu due to click outside'); // Debug
                 this._hideSpeedMenu();
             }
         });
@@ -345,7 +337,6 @@ class MPlayer {
 
         ['mousemove', 'touchstart', 'touchmove'].forEach(ev => {
             this.container.addEventListener(ev, () => {
-                console.log('Show controls triggered by:', ev); // Debug
                 this._showControls();
                 this._scheduleHideControls();
             }, { passive: true });
@@ -356,6 +347,63 @@ class MPlayer {
         } else {
             this.container.addEventListener('dblclick', (ev) => this._onDoubleClick(ev));
         }
+
+        this._bindSwipeEvents();
+    }
+
+    _bindSwipeEvents() {
+        this.container.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                this._swipeStartX = e.touches[0].clientX;
+                this._swipeStartY = e.touches[0].clientY;
+                this._swipeSpeedChange = false;
+            }
+        }, { passive: true });
+
+        this.container.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 1 && !this._swipeSpeedChange) {
+                const x = e.touches[0].clientX;
+                const y = e.touches[0].clientY;
+                const dx = x - this._swipeStartX;
+                const dy = y - this._swipeStartY;
+
+                if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > this._swipeThreshold) {
+                    e.preventDefault();
+                    this._swipeSpeedChange = true;
+
+                    if (dx < 0) {
+                        this._setPlaybackSpeed(1);
+                    } else {
+                        this._setPlaybackSpeed(2);
+                    }
+                }
+            }
+        }, { passive: false });
+
+        this.container.addEventListener('mousedown', (e) => {
+            if (e.button === 0) {
+                this._swipeStartX = e.clientX;
+                this._swipeStartY = e.clientY;
+                this._swipeSpeedChange = false;
+            }
+        });
+
+        this.container.addEventListener('mousemove', (e) => {
+            if (e.buttons === 1 && !this._swipeSpeedChange) {
+                const dx = e.clientX - this._swipeStartX;
+                const dy = e.clientY - this._swipeStartY;
+
+                if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > this._swipeThreshold) {
+                    this._swipeSpeedChange = true;
+
+                    if (dx < 0) {
+                        this._setPlaybackSpeed(1);
+                    } else {
+                        this._setPlaybackSpeed(2);
+                    }
+                }
+            }
+        });
     }
 
     _bindFullscreenEvents() {
@@ -367,15 +415,22 @@ class MPlayer {
     _setPlaybackSpeed(speed) {
         const parsedSpeed = parseFloat(speed);
         if (isNaN(parsedSpeed) || parsedSpeed <= 0) {
-            console.error('Invalid playback speed:', speed);
             return;
         }
         this.currentSpeed = parsedSpeed;
         this.video.playbackRate = this.currentSpeed;
         this.speedBtn.textContent = `${this.currentSpeed}x`;
-        console.log('Playback speed set to:', this.currentSpeed, 'Actual video playbackRate:', this.video.playbackRate); // Debug
+        
+        // Cập nhật và hiển thị tốc độ tạm thời nếu nút tốc độ bị ẩn
+        if (this._isSpeedBtnHidden) {
+            this.speedDisplay.textContent = `${this.currentSpeed}x`;
+            this._showSpeedDisplay();
+            this._hideSpeedDisplay();
+        } else {
+            // Đảm bảo ẩn tốc độ tạm thời nếu nút tốc độ không bị ẩn
+            this._hideSpeedDisplay(0);
+        }
 
-        // Update active state in menu
         this.speedOptions.forEach(option => {
             if (parseFloat(option.dataset.speed) === this.currentSpeed) {
                 option.classList.add('active');
@@ -387,10 +442,19 @@ class MPlayer {
         this._hideSpeedMenu();
     }
 
+    _showSpeedDisplay() {
+        clearTimeout(this._speedDisplayTimeout);
+        this.speedDisplay.classList.add('show');
+    }
+
+    _hideSpeedDisplay(delay = 1500) {
+        this._speedDisplayTimeout = setTimeout(() => {
+            this.speedDisplay.classList.remove('show');
+        }, delay);
+    }
+
     _toggleSpeedMenu() {
         this.speedMenu.classList.toggle('show');
-        console.log('Speed menu toggled, show:', this.speedMenu.classList.contains('show')); // Debug
-        // Đảm bảo controls không bị ẩn khi menu tốc độ mở
         if (this.speedMenu.classList.contains('show')) {
             this._showControls();
         }
@@ -399,8 +463,7 @@ class MPlayer {
     _hideSpeedMenu() {
         setTimeout(() => {
             this.speedMenu.classList.remove('show');
-            console.log('Speed menu hidden'); // Debug
-        }, 300); // Tăng độ trễ để đảm bảo click được xử lý
+        }, 300);
     }
 
     _updatePlayUI() {
@@ -475,7 +538,6 @@ class MPlayer {
         this.centerPlayBtn.style.opacity = '1';
         this.centerPlayBtn.style.transform = 'scale(1)';
         this.centerPlayBtn.style.pointerEvents = 'auto';
-        // Đảm bảo speed-options có thể click
         if (this.speedMenu.classList.contains('show')) {
             this.speedMenu.style.pointerEvents = 'auto';
         }
@@ -506,9 +568,14 @@ class MPlayer {
         if (width < 520) {
             this.volumeRange.style.display = 'none';
             this.speedBtn.style.display = 'none';
+            this._isSpeedBtnHidden = true;
+            this.speedDisplay.style.display = 'block';
         } else {
             this.volumeRange.style.display = '';
             this.speedBtn.style.display = '';
+            this._isSpeedBtnHidden = false;
+            this.speedDisplay.style.display = 'none';
+            this.speedDisplay.classList.remove('show');
         }
     }
 
